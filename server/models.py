@@ -10,8 +10,8 @@ class Exercise(db.Model):
     __tablename__ = "exercises"
 
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String, nullable=False)
-    category = db.Column(db.String, nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    category = db.Column(db.String(50), nullable=False)
     equipment_needed = db.Column(db.Boolean, nullable=False)
 
     workout_exercises = db.relationship(
@@ -28,8 +28,9 @@ class Exercise(db.Model):
 
     @validates("name", "category")
     def validate_text(self, key, value):
-        if not value or not value.strip():
+        if not isinstance(value, str) or not value.strip():
             raise ValueError(f"{key} cannot be empty")
+
         return value.strip()
 
 
@@ -56,14 +57,15 @@ class Workout(db.Model):
     __table_args__ = (
         CheckConstraint(
             "duration_minutes > 0",
-            name="check_workout_duration_positive"
+            name="check_workout_duration"
         ),
     )
 
     @validates("duration_minutes")
     def validate_duration(self, key, value):
-        if value <= 0:
-            raise ValueError("Workout duration must be positive")
+        if not isinstance(value, int) or isinstance(value, bool) or value <= 0:
+            raise ValueError("Duration must be a positive integer")
+
         return value
 
 
@@ -71,16 +73,19 @@ class WorkoutExercise(db.Model):
     __tablename__ = "workout_exercises"
 
     id = db.Column(db.Integer, primary_key=True)
+
     workout_id = db.Column(
         db.Integer,
         db.ForeignKey("workouts.id"),
         nullable=False
     )
+
     exercise_id = db.Column(
         db.Integer,
         db.ForeignKey("exercises.id"),
         nullable=False
     )
+
     reps = db.Column(db.Integer)
     sets = db.Column(db.Integer)
     duration_seconds = db.Column(db.Integer)
@@ -111,6 +116,15 @@ class WorkoutExercise(db.Model):
         ),
         CheckConstraint(
             "duration_seconds IS NULL OR duration_seconds > 0",
-            name="check_exercise_duration_positive"
+            name="check_exercise_duration"
         ),
     )
+
+    @validates("reps", "sets", "duration_seconds")
+    def validate_exercise_details(self, key, value):
+        if value is not None:
+            if not isinstance(value, int) or isinstance(value, bool) or value <= 0:
+                raise ValueError(f"{key} must be a positive integer")
+
+        return value
+
